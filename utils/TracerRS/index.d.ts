@@ -6,26 +6,22 @@ import {
     REFERENCE_CHILD_OF,
     REFERENCE_FOLLOWS_FROM,
     Span,
+    SpanContext,
 } from 'opentracing';
 
 import { TracingConfig, TracingOptions } from 'jaeger-client';
 import { JaegerTracer } from 'jaeger-client';
-import { v1 as uuid } from 'uuid/interfaces';
 
 
 export namespace TracerRS {
-    export enum BaggageFormat {
-        HTTP_HEADERS,
-        TEXT_MAP,
-        BINARY
-    }
+    export const BaggageFormat;
     export enum ReferenceTypes {
         CHILD_OF,
         FOLLOWS_FROM
     }
-    export class SpanRS extends Span {
-        parentIdRef: uuid;
-        childrenIdsRef?: { [key: string]: null };
+    class SpanRS extends Span {
+        parentIdRef?: string;
+        childrenIdsRef: { [key: string]: null };
     }
     /**
      * class that wrap jaeger-client package for more convience way to use
@@ -41,21 +37,22 @@ export namespace TracerRS {
         /**
          * create root parent span
          * @param {string} spanName operation name
-         * @return {uuid} it's id for later use
+         * @return {string} it's id for later use
          */
-        startOperation(spanName: string): uuid;
+        private _startOperation(spanName: string): string;
         /**
-         * create new child span
+         * create new child span, 
+         * in case the reference type is FOLLOW_FROM the previous span will finish automaticlly
          * @param {string} spanName span name
-         * @param {ReferenceTypes} reference refernce type
-         * @returns {uuid} new span id
+         * @param {ReferenceTypes} reference refernce type default to CHILD_OF
+         * @returns {string} new span id
          */
-        startSpan(spanName: string, reference?: ReferenceTypes): uuid;
+        startSpan(spanName: string, reference?: ReferenceTypes): string;
         /**
          * log to span
          * @param {object} object any object
          */
-        spanLog(object: any): void;
+        spanLog(object: { [key: string]: any }): void;
         /**
          * log to span
          * will add log to the span in format of:  
@@ -69,14 +66,14 @@ export namespace TracerRS {
          * log an error object to span
          * @param {Error} error error object
          * @param {boolean} setErrorToTrue optional, if set to `true`
-         * add to span the `Error` tag with `true` value
+         * add to span the `Error` tag with `true` value, default `false`
          */
         spanError(error: Error, setErrorToTrue?: boolean): void;
         /**
          * add one or more tags to span
          * @param {object} object any valid tag object
          */
-        spanTag(object: any): void;
+        spanTag(object: { [key: string]: any }): void;
         /**
          * add one tag to span
          * @param {string} key tag key
@@ -88,5 +85,23 @@ export namespace TracerRS {
          * @param {boolean} isError optional, if exist will set the value to the `error` tag of the span
          */
         spanSetError(isError?: boolean): void;
+        /**
+         * finish recursivly the span and its child
+         * @param {string} spanId optional, in case of spanId it will finish the span and and its child  
+         * if the spanId not exist it do nothing
+         */
+        finish(spanId?: string): void;
+        /**
+         * inject span context to outbound process tracing
+         * @param format optional, format which inject span context. default to TEXT
+         * @returns object with the baggage to send to next process
+         */
+        inject(format?: any): object;
+        /**
+         * extract span context from baggage
+         * @param baggage the baggae that return from the inject method
+         * @returns span context to create new span
+         */
+        extract(baggage: any): SpanContext | null;
     }
 }
