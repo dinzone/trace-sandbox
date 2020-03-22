@@ -1,6 +1,6 @@
-import { globalTracer, Span as opSpan, initGlobalTracer, SpanOptions, followsFrom, Tags as opTags, FORMAT_TEXT_MAP, FORMAT_HTTP_HEADERS, FORMAT_BINARY, SpanContext } from 'opentracing';
+import { globalTracer, Span as opSpan, initGlobalTracer, SpanOptions, followsFrom, Tags as opTags, FORMAT_TEXT_MAP, FORMAT_HTTP_HEADERS, FORMAT_BINARY, SpanContext, Tags } from 'opentracing';
 import { initTracer, JaegerTracer, TracingConfig, TracingOptions } from 'jaeger-client';
-import { v1 as uuid } from 'uuid';
+import { NextFunction, Response, Request } from 'express';
 
 export const BaggageFormat = {
     HTTP_HEADERS: FORMAT_HTTP_HEADERS,
@@ -11,7 +11,7 @@ export enum ReferenceTypes {
     CHILD_OF = 'child_of',
     FOLLOWS_FROM = 'follow_from'
 }
-class Span {
+export class Span {
     private _span: opSpan;
     constructor(span: opSpan) {
         this._span = span;
@@ -52,6 +52,12 @@ class Span {
     }
     finish(): void {
         this._span.finish();
+    }
+    setName(spanName: string): opSpan {
+        return this._span.setOperationName(spanName);
+    }
+    getInternalSpan(): opSpan {
+        return this._span;
     }
 }
 
@@ -96,7 +102,29 @@ export class Tracer {
             this.span = span;
             return await func();
         }
-        return await _withSpan();
+        try {
+            return await _withSpan();
+        } catch (err) {
+            span.setError(true);
+            throw err;
+        } finally {
+            span.finish();
+        }
+    }
+    injectSpanMiddleware() {
+        let self = this;
+        return (req: Request, res: Response, next: NextFunction) => {
+            let currentSpan = self._startSpan(req.url);
+            currentSpan.tag({
+                [Tags.HTTP_METHOD]: req.method,
+                [Tags.HTTP_URL]: req.url
+            });
+            req.span = currentSpan;
+            res.on('finish', () => {
+                currentSpan.finish();
+            })
+            next();
+        };
     }
     // spanLog(object: { [key: string]: any } | string): void {
     //     if (!this._currentActiveSpan) return;

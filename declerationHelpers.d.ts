@@ -1,4 +1,4 @@
-import { Span } from "opentracing";
+import { Span } from "./utils/TracerRS";
 
 declare global {
     namespace Express {

@@ -8,13 +8,15 @@ import TracerRS, { spanRefType } from '../../utils/tracer';
 import { wait } from '../../utils';
 
 import { default as getRabbitInstance } from '../../utils/rabbitmq';
-import { Tags, Span, FORMAT_TEXT_MAP } from 'opentracing';
+import { Tags, FORMAT_TEXT_MAP } from 'opentracing';
 
 import { default as config } from '../../utils/config';
 
+import { Tracer, ReferenceTypes } from '../../utils/TracerRS';
+
 const rabbit = getRabbitInstance(config.RABBIT_URL);
 
-TracerRS.init({
+Tracer.initTracer({
     serviceName: 'http-handler',
     reporter: {
         agentHost: config.JAEGER_AGENT_HOST
@@ -27,19 +29,20 @@ TracerRS.init({
 
 const app = express();
 
-app.use(TracerRS.injectSpanMiddleware());
+const appTracer = new Tracer();
 
-app.get('/error', (req, res) => {
+app.use(appTracer.injectSpanMiddleware());
+
+app.get('/error', async (req, res) => {
     const { span } = req;
+    span?.setName('error-operation');
     try {
-        span?.log({
-            msg: 'start error route'
-        });
+        span?.log('start error route');
         throw new Error('errorrrrrr');
     } catch (err) {
         console.log(err);
-        TracerRS.error(err);
-        span?.addTags({
+        span?.error(err, true);
+        span?.tag({
             [Tags.HTTP_STATUS_CODE]: 500
         });
         res.status(500).send('error');
@@ -48,12 +51,12 @@ app.get('/error', (req, res) => {
 
 app.get('/trace', async (req, res) => {
     const { span: opSpan } = req;
+    const tracer = new Tracer();
+    opSpan?.setName('long-operation');
     let httpHandlerSpan, rabbitSendSpan;
     try {
-        httpHandlerSpan = TracerRS.startSpan('http-handle-request', opSpan?.context(), spanRefType.CHILD_OF);
-        httpHandlerSpan?.log({
-            msg: 'start request handling'
-        });
+        httpHandlerSpan = tracer.startSpan('http-handle-request', opSpan);
+        httpHandlerSpan.log('start request handling');
         // simulate logic
         wait(2000);
         httpHandlerSpan?.log({

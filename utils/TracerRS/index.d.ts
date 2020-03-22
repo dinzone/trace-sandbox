@@ -1,12 +1,5 @@
 import {
-    Tags as opTags,
-    FORMAT_BINARY,
-    FORMAT_HTTP_HEADERS,
-    FORMAT_TEXT_MAP,
-    REFERENCE_CHILD_OF,
-    REFERENCE_FOLLOWS_FROM,
-    Span,
-    SpanContext,
+    SpanContext, Span as opSpan,
 } from 'opentracing';
 
 import { TracingConfig, TracingOptions } from 'jaeger-client';
@@ -14,22 +7,71 @@ import { JaegerTracer } from 'jaeger-client';
 
 
 export namespace TracerRS {
-    export const BaggageFormat;
+    export enum BaggageFormat {
+        HTTP_HEADERS,
+        TEXT_MAP,
+        BINARY
+    }
     export enum ReferenceTypes {
         CHILD_OF,
         FOLLOWS_FROM
     }
-    class SpanRS extends Span {
-        parentIdRef?: string;
-        childrenIdsRef: { [key: string]: null };
+    export class Span {
+        constructor(span: opSpan);
+        /**
+         * log to span
+         * @param {object} object any object
+         */
+        log(object: { [key: string]: any }): void;
+        /**
+         * log to span
+         * will add log to the span in format of:  
+         * ```json
+         * { "message": "message" }
+         * ```
+         * @param {string} message the message to log
+         */
+        log(message: string): void;
+        /**
+         * log an error object to span
+         * @param {Error} error error object
+         * @param {boolean} setErrorToTrue optional, if set to `true`
+         * add to span the `Error` tag with `true` value, default `false`
+         */
+        error(error: Error, setErrorToTrue?: boolean): void;
+        /**
+         * add one or more tags to span
+         * @param {object} object any valid tag object
+         */
+        tag(object: { [key: string]: any }): void;
+        /**
+         * add one tag to span
+         * @param {string} key tag key
+         * @param {string | number | boolean} value tag value
+         */
+        tag(key: string, value: string | number | boolean): void;
+        /**
+         * set error tag in the span
+         * @param {boolean} isError optional, if exist will set the value to the `error` tag of the span
+         */
+        setError(isError?: boolean): void;
+        /**
+         * get span context
+         * @returns the span context
+         */
+        context(): SpanContext;
+        /**
+         * finish recursivly the span and its child
+         * @param {string} spanId optional, in case of spanId it will finish the span and and its child  
+         * if the spanId not exist it do nothing
+         */
+        finish(): void;
     }
     /**
      * class that wrap jaeger-client package for more convience way to use
      */
     export class Tracer {
         private _tracer: JaegerTracer;
-        private _activeSpans: { [key: string]: SpanRS };
-        private _currentActiveSpan: SpanRS;
         /**
          * init jaeger tracer
          */
@@ -49,49 +91,6 @@ export namespace TracerRS {
          */
         startSpan(spanName: string, reference?: ReferenceTypes): string;
         /**
-         * log to span
-         * @param {object} object any object
-         */
-        spanLog(object: { [key: string]: any }): void;
-        /**
-         * log to span
-         * will add log to the span in format of:  
-         * ```json
-         * { "message": "message" }
-         * ```
-         * @param {string} message the message to log
-         */
-        spanLog(message: string): void;
-        /**
-         * log an error object to span
-         * @param {Error} error error object
-         * @param {boolean} setErrorToTrue optional, if set to `true`
-         * add to span the `Error` tag with `true` value, default `false`
-         */
-        spanError(error: Error, setErrorToTrue?: boolean): void;
-        /**
-         * add one or more tags to span
-         * @param {object} object any valid tag object
-         */
-        spanTag(object: { [key: string]: any }): void;
-        /**
-         * add one tag to span
-         * @param {string} key tag key
-         * @param {string | number | boolean} value tag value
-         */
-        spanTag(key: string, value: string | number | boolean): void;
-        /**
-         * set error tag in the span
-         * @param {boolean} isError optional, if exist will set the value to the `error` tag of the span
-         */
-        spanSetError(isError?: boolean): void;
-        /**
-         * finish recursivly the span and its child
-         * @param {string} spanId optional, in case of spanId it will finish the span and and its child  
-         * if the spanId not exist it do nothing
-         */
-        finish(spanId?: string): void;
-        /**
          * inject span context to outbound process tracing
          * @param format optional, format which inject span context. default to TEXT
          * @returns object with the baggage to send to next process
@@ -103,5 +102,6 @@ export namespace TracerRS {
          * @returns span context to create new span
          */
         extract(baggage: any): SpanContext | null;
+        injectNewSpan(span: Span, func: () => any): Promise<any>;
     }
 }
