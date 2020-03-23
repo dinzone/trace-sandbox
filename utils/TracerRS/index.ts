@@ -234,11 +234,11 @@ export class Tracer {
         if (!this._activeSpan) throw new Error('span must created before finish');
         return this._activeSpan.setName(spanName);
     }
-    withSpan(span: Span, func: (params: any) => Promise<any>, params: any) {
+    withSpan(span: Span, func: (...params: any[]) => Promise<any>, ...params: any[]) {
         const spw = new spanWrapper(span);
         return spw.bindFunction(func, params);
     }
-    withTracer(span: Span, func: (params: any) => Promise<any>, params: any) {
+    withTracer(span: Span, func: (...params: any[]) => Promise<any>, ...params: any[]) {
         const tr = new Tracer(span);
         const trw = new tracerWrapper(tr);
         return trw.bindFunction(func, params);
@@ -273,11 +273,10 @@ export class spanWrapper {
     activeSpan(): Span {
         return this._span;
     }
-    async bindFunction(func: (parmas: any) => Promise<any>, ...params: any) {
+    async bindFunction(func: (...parmas: any[]) => Promise<any>, params: any[]) {
         try {
-            return await func.bind(this, ...params)();
+            return await func.call(this, ...params);
         } catch (err) {
-            this._span.setError(true);
             throw (err);
         } finally {
             this._span.finish();
@@ -293,9 +292,9 @@ export class tracerWrapper {
     activeTracer(): Tracer {
         return this._tracer;
     }
-    async bindFunction(func: (parmas: any[]) => Promise<any>, ...params: any[]) {
+    async bindFunction(func: (...parmas: any[]) => Promise<any>, params: any[]) {
         try {
-            return await func.bind(this, ...params)();
+            return await func.call(this, ...params);
         } catch (err) {
             this._tracer.setError(true);
             throw (err);
