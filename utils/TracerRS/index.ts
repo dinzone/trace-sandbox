@@ -83,12 +83,15 @@ export class Span {
     context(): SpanContext {
         return this._span.context();
     }
-    finish(): void {
-        this._children.forEach((child: Span) => {
-            child.finish();
-        })
+    finish(finishChildren: boolean = false): void {
+        if (finishChildren) {
+            this._children.forEach((child: Span) => {
+                child.finish();
+            });
+        }
         this._span.finish();
-        this._rootTracer.finish(this);
+        this._parent?._childFinish(this);
+        this._rootTracer.noticeFinish(this);
     }
     setName(spanName: string): Span {
         this._span.setOperationName(spanName);
@@ -105,6 +108,9 @@ export class Span {
     }
     addChild(child: Span): void {
         this._children.push(child);
+    }
+    private _childFinish(child: Span): void {
+        this._children = this._children.filter(c => c !== child);
     }
 }
 
@@ -208,26 +214,21 @@ export class Tracer {
         if (!this._activeSpan) throw new Error('span must created before get its content');
         return this._activeSpan.context();
     }
-    finish(span?: Span): void {
-        if (span) {
-            if (span === this._activeSpan) {
-                this._activeSpan = span.getParent();
-            }
-            span.finish();
-            return;
-        }
+    finish(finishChildren: boolean = false): void {
         if (!this._activeSpan) throw new Error('span must created before finish');
-        this._activeSpan.finish();
-        if (this._activeSpan == this._rootSpan) {
-            this._activeSpan = undefined;
-            this._rootSpan = undefined;
-            return;
+        this._activeSpan.finish(finishChildren);
+    }
+    noticeFinish(span: Span) {
+        if (span === this._activeSpan) {
+            this._activeSpan = span.getParent();
         }
-        this._activeSpan = this._activeSpan.getParent();
+        if (span === this._rootSpan) {
+            this._rootSpan = undefined;
+        }
     }
     finishAll(): void {
         if (!this._rootSpan) throw new Error('root span must create before finish all');
-        this._rootSpan.finish();
+        this._rootSpan.finish(true);
     }
     setName(spanName: string): Span {
         if (!this._activeSpan) throw new Error('span must created before finish');
@@ -264,7 +265,7 @@ export class Tracer {
     }
 }
 
-class spanWrapper {
+export class spanWrapper {
     private _span: Span;
     constructor(span: Span) {
         this._span = span;
@@ -284,7 +285,7 @@ class spanWrapper {
     }
 }
 
-class tracerWrapper {
+export class tracerWrapper {
     private _tracer: Tracer;
     constructor(tracer: Tracer) {
         this._tracer = tracer;
