@@ -169,7 +169,7 @@ export class Tracer {
         this._rootSpan = newSpan;
         return newSpan;
     }
-    startSpan(spanName: string, parentSpan?: Span | SpanContext, reference: ReferenceTypes = ReferenceTypes.CHILD_OF): Span {
+    startSpan(spanName: string, parentSpan?: Span | SpanContext | null, reference: ReferenceTypes = ReferenceTypes.CHILD_OF): Span {
         // in case the root span didnt created
         if (!this._activeSpan) {
             return this._startOperation(spanName, parentSpan as SpanContext, reference);
@@ -254,14 +254,14 @@ export class Tracer {
         if (!this._rootSpan) throw new Error('could not found root span');
         return this._rootSpan;
     }
-    inject(format = BaggageFormat.TEXT_MAP): object {
-        if (!this._rootSpan) throw new Error('could not inject when there is no root span');
+    static inject(span: Span, format = BaggageFormat.TEXT_MAP): object {
+        if (!span) throw new Error('span must provided for inject');
         let baggage = {};
-        this._tracer.inject(this._rootSpan.context(), format, baggage);
+        globalTracer().inject(span.context(), format, baggage);
         return baggage;
     }
-    extract(baggage: any, format: any): SpanContext | null {
-        return this._tracer.extract(format, baggage);
+    static extract(baggage: any, format: any): SpanContext | undefined | null {
+        return globalTracer().extract(format, baggage);
     }
 }
 
@@ -277,6 +277,7 @@ export class spanWrapper {
         try {
             return await func.call(this, ...params);
         } catch (err) {
+            this._span.setError(true);
             throw (err);
         } finally {
             this._span.finish();

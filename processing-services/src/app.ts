@@ -6,9 +6,9 @@ import serviceInterface from './services/serviceInterface';
 import { default as getRabbitInstance } from '../../utils/rabbitmq';
 import { default as config } from '../../utils/config';
 
-import TracerRS from '../../utils/tracer';
+import { Tracer } from '../../utils/TracerRS';
 
-TracerRS.init({
+Tracer.initTracer({
     serviceName: `process-service-${process.argv[2]}`,
     reporter: {
         agentHost: config.JAEGER_AGENT_HOST

@@ -1,35 +1,29 @@
 import serviceInterface from './serviceInterface';
-import TracerRS, { spanRefType } from '../../../utils/tracer';
-import { FORMAT_TEXT_MAP, Span, Tags } from 'opentracing';
 import { wait } from '../../../utils';
+import { Tracer, BaggageFormat, ReferenceTypes } from '../../../utils/TracerRS';
 
 class Service implements serviceInterface {
     start(msg: any): Promise<void> {
-        let span: Span | undefined;
+        const tracer = new Tracer();
         try {
             console.log('do some work');
             let parentSpan;
             if (msg.tracerCarrier) {
-                parentSpan = TracerRS.tracer?.extract(FORMAT_TEXT_MAP, msg.tracerCarrier)
+                parentSpan = Tracer.extract(msg.tracerCarrier, BaggageFormat.TEXT_MAP);
             }
-            span = TracerRS.startSpan('B-processing', parentSpan, spanRefType.REFERENCES);
-            span?.log({
-                msg: 'start B processing'
-            });
+            tracer.startSpan('B-processing', parentSpan, ReferenceTypes.FOLLOWS_FROM);
+            tracer.spanLog('start B processing');
             console.log(`got message: ${JSON.stringify(msg)}`);
             wait(4000);
-            span?.log({
-                msg: 'finish B processing'
-            });
+            tracer.spanLog('finish B processing');
             console.log('finish B logic');
-            span?.finish();
             return Promise.resolve();
         } catch (err) {
             console.log(err);
-            span?.setTag(Tags.ERROR, true);
+            tracer.setError(true);
             return Promise.reject(err);
         } finally {
-            span?.finish();
+            tracer.finish();
         }
     }
 }

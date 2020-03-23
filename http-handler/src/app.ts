@@ -5,12 +5,11 @@ import express from 'express';
 
 import BPromise from 'bluebird';
 
-import { ReferenceTypes, Span, Tracer } from '../../utils/TracerRS';
+import { ReferenceTypes, Span, Tracer, BaggageFormat } from '../../utils/TracerRS';
 
 import { wait } from '../../utils';
 
 import { default as getRabbitInstance } from '../../utils/rabbitmq';
-import { Tags, Span as opSpans, FORMAT_TEXT_MAP, REFERENCE_CHILD_OF } from 'opentracing';
 
 import { default as config } from '../../utils/config';
 
@@ -101,8 +100,18 @@ app.get('/tracePlus', async (req, res) => {
     tracer.finish();
     // tracer.activeSpan(tracer.rootSpan()); // change back the active span to root span
     tracer.spanLog('finish request');
-    tracer.finish(); // finish all span tree
-    res.send(true);
+    const message = {
+        tracerCarrier: Tracer.inject(tracer.rootSpan(), BaggageFormat.TEXT_MAP)
+    }
+    try {
+        await tracer.withSpan(tracer.startSpan('send-to-rabbit', tracer.activeSpan(), ReferenceTypes.CHILD_OF), produce, 'A', message);
+        res.send(true);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send(false);
+    } finally {
+        tracer.finish(); // finish all span tree
+    }
 });
 
 start();
@@ -112,6 +121,12 @@ async function start() {
     app.listen(3000, () => {
         console.log('server running on port 3000');
     });
+}
+
+async function produce(this: any, q: string, m: Object) {
+    const span: Span = this.activeSpan();
+    span.log('hello');
+    return await rabbit.produce(q, m);
 }
 
 function someIO(this: any, num: number): Promise<void> {
