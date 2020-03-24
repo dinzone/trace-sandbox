@@ -213,7 +213,7 @@ export class Tracer {
      * @param config (TracingConfig) jaeger tracing config
      * @param options (TracingOptions) jaeger tracing options
      */
-    static initTracer(config: TracingConfig, options: TracingOptions): void {
+    static initTracer(config?: TracingConfig, options?: TracingOptions): void {
         // init global tracer the the config and options
         // init sampler to always report to jaeger agent by default
         initGlobalTracer(initTracer({
@@ -222,7 +222,7 @@ export class Tracer {
                 param: 1
             },
             ...config
-        }, options));
+        }, options || {}));
     }
     /**
      * inject span context to carrier and return the carrier

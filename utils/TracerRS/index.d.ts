@@ -125,7 +125,7 @@ export namespace TracerRS {
          * @param config (TracingConfig) jaeger tracing config
          * @param options (TracingOptions) jaeger tracing options
          */
-        static initTracer(config: TracingConfig, options: TracingOptions): void;
+        static initTracer(config?: TracingConfig, options?: TracingOptions): void;
         /**
          * inject span context to carrier and return the carrier
          * @param span (Span) span to inject
