@@ -7,35 +7,35 @@ This package provide jaeger-tracer and opentracing managment system.
 1. [install](#install)
 2. [basic usage](#basic-usage)
 3. [classes](#classes)
-    1. [Tracer](#Tracer)
-        1. [initTracer](#initTracer)
+    1. [Tracer](#tracer)
+        1. [initTracer](#inittracer)
         2. [inject](#inject)
         3. [extract](#extract)
-        4. [startSpan](#tracer.startSpan)
-        5. [spanLog](#tracer.spanLog)
-        6. [spanError](#tracer.spanError)
-        7. [spanTag](#tracer.spanTag)
-        8. [spanSetError](#tracer.spanSetError)
-        9. [context](#tracer.context)
-        10. [finish](#tracer.finish) 
-        11. [finishAll](#tracer.finishAll)
-        12. [setName](#tracer.setName)
-        13. [withSpan](#tracer.withSpan)
-        14. [withTracer](#tracer.withTracer)
-        15. [activeSpan](#tracer.activeSpan)
-        16. [rootSpan](#tracer.rootSpan)
-    2. [Span](#Span)
-        1. [startSpan](#span.startSpan)
-        2. [log](#span.log)
-        3. [error](#span.error)
-        4. [tag](#span.tag)
-        5. [setError](#span.setError)
-        6. [context](#span.context)
-        7. [finish](#span.finish)
-        8. [setName](#span.setName)
-        9. [getInternalSpan](#span.getInternalSpan)
-        10. [getTracer](#span.getTracer)
-        11. [getParent](#span.getParent)
+        4. [startSpan](#tracerstartspan)
+        5. [spanLog](#tracerspanlog)
+        6. [spanError](#tracerspanerror)
+        7. [spanTag](#tracerspantag)
+        8. [spanSetError](#tracerspanseterror)
+        9. [context](#tracercontext)
+        10. [finish](#tracerfinish) 
+        11. [finishAll](#tracerfinishall)
+        12. [setName](#tracersetname)
+        13. [withSpan](#tracerwithspan)
+        14. [withTracer](#tracerwithtracer)
+        15. [activeSpan](#traceractivespan)
+        16. [rootSpan](#tracerrootspan)
+    2. [Span](#span)
+        1. [startSpan](#spanstartspan)
+        2. [log](#spanlog)
+        3. [error](#spanerror)
+        4. [tag](#spantag)
+        5. [setError](#spanseterror)
+        6. [context](#spancontext)
+        7. [finish](#spanfinish)
+        8. [setName](#spansetname)
+        9. [getInternalSpan](#spangetinternalspan)
+        10. [getTracer](#spangettracer)
+        11. [getParent](#spangetparent)
 4. [enums](#enums)
 ___
 
@@ -330,6 +330,13 @@ add `Error` tag to span with `isError` as its value, default to `true`.
 context(): SpanContext
 ```
 return the span context
+
+### span.finish
+```ts
+finish(finishChildren?: boolean = false): void
+```
+finish the span.
+in case `finishChildren` is `true`, it will finish all span children as well.
 
 ### span.setName
 ```ts
